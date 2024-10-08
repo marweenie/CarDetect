@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Java App</string>
+    <string name="processed_image_description">Processed image showing detected vehicles</string>
+    <string name="display_name">Vehicle Detection</string>
+</resources>
