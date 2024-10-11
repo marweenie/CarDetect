@@ -16,4 +16,16 @@
         android:text="@string/display_name"
         />
 
+    <Button
+        android:id="@+id/video_button"
+        android:layout_width="wrap_content"
+        android:layout_height="50dp"
+        android:text="Play Video" />
+
+    <VideoView
+        android:id="@+id/video_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" /> <!-- Start off as invisible -->
+
 </LinearLayout>
