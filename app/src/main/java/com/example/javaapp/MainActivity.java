@@ -95,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
         videoView.setVisibility(View.VISIBLE);
 
         // Specify the path to your video
-        Uri videoUri = Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.car);
+        Uri videoUri = Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.sidecar);
 
         // Set the video URI to the VideoView
         videoView.setVideoURI(videoUri);
@@ -138,7 +138,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Initialize MediaMetadataRetriever
         retriever = new MediaMetadataRetriever();
-        retriever.setDataSource(this, Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.car));
+        retriever.setDataSource(this, Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.sidecar));
 
         // Start looping through frames
         handler = new Handler();
@@ -150,12 +150,14 @@ public class MainActivity extends AppCompatActivity {
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                int totalFrames = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT) != null ?
-                        Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT)) : 1;
+                // Retrieve the total frame count using the correct metadata key
+                int totalFrames = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION) != null
+                        ? Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)) : 1;
 
-                long frameDuration = (long) ((1.0 / frameRate) * 1000000);
+                long frameDuration = (long) ((1.0 / frameRate) * 1000000); // Convert to microseconds
                 long currentTime = currentFrame * frameDuration;
                 Bitmap frame = retriever.getFrameAtTime(currentTime, MediaMetadataRetriever.OPTION_CLOSEST);
+
                 if (frame != null) {
                     Mat matFrame = new Mat();
                     Utils.bitmapToMat(frame, matFrame);
@@ -168,19 +170,21 @@ public class MainActivity extends AppCompatActivity {
                     Utils.matToBitmap(detectedMat, detectedBitmap);
 
                     // Display the processed frame with object detection in the ImageView
-                    imageView.setImageBitmap(detectedBitmap);
+                    runOnUiThread(() -> imageView.setImageBitmap(detectedBitmap));
+
+                    //was   imageView.setImageBitmap(detectedBitmap);
                 }
 
                 currentFrame++;
-                if (currentTime < totalFrames * frameDuration) {
-                    loopThroughFrames();
+                if (currentTime < totalFrames * 1000) { // Compare with duration in microseconds
+                    loopThroughFrames(); // Continue to the next frame
                 } else {
-                    resetUI();
+                    resetUI(); // Reset the UI when the video ends
                 }
             }
-
-        }, 1000 / frameRate); // Delay based on frame rate
+        }, 1000 / frameRate); // Delay based on frame rate (milliseconds)
     }
+
 
     private void resetUI() {
         // Show buttons again and hide the ImageView

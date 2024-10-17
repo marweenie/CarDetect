@@ -3,6 +3,7 @@ package com.example.javaapp;
 import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
+import android.util.Log;
 
 import org.checkerframework.checker.units.qual.A;
 import org.opencv.android.Utils;
@@ -93,18 +94,25 @@ public class ObjectDetector {
         Object value=output_map.get(0);
         Object Object_class=output_map.get(1);
         Object score=output_map.get(2);
+        Log.d("ObjectDetector", "Number of detections: " + scores[0].length);
+
         for (int i=0;i<10;i++){
             float class_value=(float) Array.get(Array.get(Object_class,0),i);
             float score_value=(float) Array.get(Array.get(score,0),i);
             if(score_value>0.5){
+
                 Object box1=Array.get(Array.get(value,0),i);
                 float top=(float) Array.get(box1,0)*height;
                 float left=(float) Array.get(box1,1)*width;
                 float bottom=(float) Array.get(box1,2)*height;
                 float right=(float) Array.get(box1,3)*width;
+
                 if(class_value==2 || class_value==3 || class_value==5 || class_value==7 ){
                     Imgproc.rectangle(rotated_mat_image,new Point(left,top),new Point(right,bottom),new Scalar(0, 255, 0, 255),2);
-                    Imgproc.putText(rotated_mat_image,labelList.get((int) class_value),new Point(left,top),3,1,new Scalar(255, 0, 0, 255),2);}
+                    Imgproc.putText(rotated_mat_image,labelList.get((int) class_value),new Point(left,top),3,1,new Scalar(255, 0, 0, 255),2);
+                    Log.d("!ObjectDetector!", "Detected: " + labelList.get((int) class_value) +
+                            " (Class: " + class_value + ") | BoundingBox: [" + left + ", " + top + "] to [" + right + ", " + bottom + "]");
+                }
             }
 
         }
