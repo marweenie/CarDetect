@@ -34,6 +34,7 @@
 
         <activity
             android:name=".CameraActivity"/>
+        <activity android:name=".TrackingActivity" />
 
         <activity
             android:name=".MainActivity"

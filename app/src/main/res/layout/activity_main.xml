@@ -6,41 +6,46 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".MainActivity"
+    android:orientation="vertical"
     android:gravity="center">
 
-    <Button
-        android:id="@+id/image_button"
-        android:layout_width="wrap_content"
-        android:layout_height="50dp"
-        android:text="IMG Vid" />
+<Button
+android:id="@+id/image_button"
+android:layout_width="wrap_content"
+android:layout_height="50dp"
+android:text="IMG Vid" />
 
-    <!-- ImageView that will act like a play button (hidden initially) -->
-    <ImageView
-        android:id="@+id/image_view"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-    android:clickable="true"
-    android:focusable="true"
-    android:visibility="gone" /> <!-- Initially hidden -->
-    <!-- Replace with your image resource -->
+<ImageView
+android:id="@+id/image_view"
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+android:clickable="true"
+android:focusable="true"
+android:visibility="gone" />
 
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="50dp"
-        android:id="@+id/camera_button"
-        android:text="@string/display_name"
-        />
+<Button
+android:layout_width="wrap_content"
+android:layout_height="50dp"
+android:id="@+id/camera_button"
+android:text="@string/display_name" />
 
-    <Button
-        android:id="@+id/video_button"
-        android:layout_width="wrap_content"
-        android:layout_height="50dp"
-        android:text="Play Video" />
+<Button
+android:id="@+id/video_button"
+android:layout_width="wrap_content"
+android:layout_height="50dp"
+android:text="Play Video" />
 
-    <VideoView
-        android:id="@+id/video_view"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:visibility="gone" /> <!-- Start off as invisible -->
+<VideoView
+android:id="@+id/video_view"
+android:layout_width="match_parent"
+android:layout_height="0dp"
+    android:layout_weight="1"
+    android:visibility="gone" />
 
-</LinearLayout>
+<Button
+android:id="@+id/tracking_button"
+android:layout_width="wrap_content"
+android:layout_height="50dp"
+android:text="Start Tracking" />
+
+    </LinearLayout>

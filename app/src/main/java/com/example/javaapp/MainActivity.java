@@ -38,6 +38,7 @@ public class MainActivity extends AppCompatActivity {
     private VideoView videoView; // VideoView to play the video
     private Button image_button;
     private ImageView imageView;
+    private Button tracking_button; // Declare the tracking button
 
     private ObjectDetector objectDetector;
 
@@ -51,6 +52,8 @@ public class MainActivity extends AppCompatActivity {
         videoView = findViewById(R.id.video_view); // Make sure to add a VideoView in XML
         imageView = findViewById(R.id.image_view);
         image_button = findViewById(R.id.image_button);
+        tracking_button = findViewById(R.id.tracking_button); // Initialize tracking button
+
 
         try{
             objectDetector=new ObjectDetector(getAssets(),"model.tflite","labelmap.txt",300);
@@ -60,6 +63,17 @@ public class MainActivity extends AppCompatActivity {
             Log.d("MainActivity","Getting some error");
             e.printStackTrace();
         }
+
+        tracking_button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, TrackingActivity.class);
+                startActivity(intent);
+            }
+        });
+
+
+
 
         image_button.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -92,6 +106,7 @@ public class MainActivity extends AppCompatActivity {
         video_button.setVisibility(View.GONE);
         image_button.setVisibility(View.GONE);
         imageView.setVisibility(View.GONE);
+        tracking_button.setVisibility(View.GONE);
         videoView.setVisibility(View.VISIBLE);
 
         // Specify the path to your video
@@ -113,6 +128,7 @@ public class MainActivity extends AppCompatActivity {
                 camera_button.setVisibility(View.VISIBLE);
                 video_button.setVisibility(View.VISIBLE);
                 image_button.setVisibility(View.VISIBLE);
+                tracking_button.setVisibility(View.VISIBLE);
 
                 // Hide the video view
                 videoView.setVisibility(View.GONE);
@@ -132,6 +148,7 @@ public class MainActivity extends AppCompatActivity {
         camera_button.setVisibility(View.GONE);
         video_button.setVisibility(View.GONE);
         image_button.setVisibility(View.GONE);
+        tracking_button.setVisibility(View.GONE);
 
         // Show the ImageView
         imageView.setVisibility(View.VISIBLE);
@@ -192,6 +209,6 @@ public class MainActivity extends AppCompatActivity {
         video_button.setVisibility(View.VISIBLE);
         image_button.setVisibility(View.VISIBLE);
         imageView.setVisibility(View.GONE);
-
+        tracking_button.setVisibility(View.VISIBLE);
     }
 }
