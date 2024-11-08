@@ -15,14 +15,16 @@
         android:text="IMG Vid" />
 
     <!-- ImageView that will act like a play button (hidden initially) -->
+    <!-- Initially hidden -->
+    <!-- Replace with your image resource -->
+
     <ImageView
         android:id="@+id/image_view"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-    android:clickable="true"
-    android:focusable="true"
-    android:visibility="gone" /> <!-- Initially hidden -->
-    <!-- Replace with your image resource -->
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone" />
 
     <Button
         android:layout_width="wrap_content"

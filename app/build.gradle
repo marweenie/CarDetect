@@ -37,14 +37,13 @@ android {
         }
     }
 
-    aaptOptions {
-        noCompress "tflite"
-        noCompress "lite"
-    }
 
     buildFeatures {
         mlModelBinding true
         aidl true
+    }
+    androidResources {
+        noCompress 'lite'
     }
 }
 
