@@ -22,6 +22,8 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -43,6 +45,111 @@ public class ObjectDetector {
         interpreter = new Interpreter(loadModelFile(assetManager, modelPath), options);
         labelList = loadLabelList(assetManager, labelPath); // Load labels
     }
+
+
+    //-----------------------------------------------------------------------
+    //Tracking Begin
+
+    // Inner class to represent a tracked vehicle with an ID and centroid
+    class Vehicle {
+        int id;
+        Point centroid;
+        Point lastCentroid;
+        int framesNotSeen;
+
+        Vehicle(int id, Point centroid) {
+            this.id = id;
+            this.centroid = centroid;
+            this.lastCentroid = centroid;
+            this.framesNotSeen = 0;
+        }
+
+        // Update the centroid and lastCentroid
+       /* void updateCentroid(Point newCentroid) {
+            this.lastCentroid = this.centroid;
+            this.centroid = newCentroid;
+            this.framesNotSeen = 0;
+        }
+
+        // Predict the next position based on last movement
+        Point predictNextPosition() {
+            double dx = centroid.x - lastCentroid.x;
+            double dy = centroid.y - lastCentroid.y;
+            return new Point(centroid.x + dx, centroid.y + dy);
+        }*/
+    }
+
+
+
+    // List to keep track of active vehicles and their centroids
+    private List<Vehicle> trackedVehicles = new ArrayList<>();
+    private int nextVehicleId = 1;  // ID counter for new vehicles
+
+    // Method to update tracked vehicles with detected centroids in the current frame
+    private void updateTrackedVehicles(List<Point> detectedCentroids) {
+        int MAX_DISTANCE = 300;            // Maximum distance to consider the same vehicle
+        int MAX_FRAMES_NOT_SEEN = 15;      // Max frames before removing a vehicle
+
+        Map<Integer, Point> updatedCentroids = new HashMap<>();
+
+        // Loop over each detected centroid
+        for (Point newCentroid : detectedCentroids) {
+            int closestVehicleId = -1;
+            double minDistance = MAX_DISTANCE;
+
+            // Find the closest tracked vehicle within the threshold distance
+            for (Vehicle vehicle : trackedVehicles) {
+                double distance = Math.sqrt(Math.pow(vehicle.centroid.x - newCentroid.x, 2) + Math.pow(vehicle.centroid.y - newCentroid.y, 2));
+
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestVehicleId = vehicle.id;
+                }
+            }
+
+            // Update the centroid for the matched vehicle or create a new vehicle if none are close enough
+            if (closestVehicleId != -1) {
+                for (Vehicle vehicle : trackedVehicles) {
+                    if (vehicle.id == closestVehicleId) {
+                        vehicle.centroid = newCentroid;
+                        vehicle.framesNotSeen = 0; // Reset count as it's seen
+                        updatedCentroids.put(vehicle.id, vehicle.centroid);
+                    }
+                }
+            } else {
+                int newId = nextVehicleId++;
+                Vehicle newVehicle = new Vehicle(newId, newCentroid);
+                trackedVehicles.add(newVehicle);
+                updatedCentroids.put(newId, newCentroid);
+            }
+        }
+
+        // Handle vehicles not seen in this frame by incrementing framesNotSeen counter
+        for (Iterator<Vehicle> iterator = trackedVehicles.iterator(); iterator.hasNext(); ) {
+            Vehicle vehicle = iterator.next();
+
+            if (!updatedCentroids.containsKey(vehicle.id)) {
+                vehicle.framesNotSeen++;
+
+                // Remove vehicle if not seen for the maximum allowed frames
+                if (vehicle.framesNotSeen > MAX_FRAMES_NOT_SEEN) {
+                    iterator.remove();
+                }
+            }
+        }
+    }
+
+    // Utility method to calculate Euclidean distance between two points
+    private double calculateDistance(Point p1, Point p2) {
+        return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+    }
+
+
+
+
+
+    //Tracking End Code
+    //--------------------------------------------
 
     // Loads label list from a file in assets
     private List<String> loadLabelList(AssetManager assetManager, String labelPath) throws IOException {
@@ -77,11 +184,9 @@ public class ObjectDetector {
         height = bitmap.getHeight();
         width = bitmap.getWidth();
 
-        // Scale the bitmap to the input size of the model
         Bitmap scaledBitmap = Bitmap.createScaledBitmap(bitmap, INPUT_SIZE, INPUT_SIZE, false);
         ByteBuffer byteBuffer = convertBitmapToByteBuffer(scaledBitmap);
 
-        // Prepare input and output for the TensorFlow Lite interpreter
         Object[] input = new Object[1];
         input[0] = byteBuffer;
 
@@ -94,40 +199,42 @@ public class ObjectDetector {
         output_map.put(1, classes);
         output_map.put(2, scores);
 
-        // Run the model and get the output
         interpreter.runForMultipleInputsOutputs(input, output_map);
 
-        // Process each detection
+        // List to store centroids for the current frame
+        List<Point> detectedCentroids = new ArrayList<>();
+
         for (int i = 0; i < 10; i++) {
             float class_value = (float) Array.get(Array.get(output_map.get(1), 0), i);
             float score_value = (float) Array.get(Array.get(output_map.get(2), 0), i);
 
-            // If confidence score is above threshold
             if (score_value > 0.5) {
-                // Get bounding box coordinates, scaled to the image size
                 Object box1 = Array.get(Array.get(output_map.get(0), 0), i);
                 float top = (float) Array.get(box1, 0) * height;
                 float left = (float) Array.get(box1, 1) * width;
                 float bottom = (float) Array.get(box1, 2) * height;
                 float right = (float) Array.get(box1, 3) * width;
 
-                // Check if the detected class corresponds to a vehicle
                 if (class_value == 2 || class_value == 3 || class_value == 5 || class_value == 7) {
-                    // Calculate and store the centroid of the vehicle
                     vehicleCentroid = new Point((left + right) / 2, (top + bottom) / 2);
+                    detectedCentroids.add(vehicleCentroid);
 
-                    // Draw bounding box and centroid
                     Imgproc.rectangle(rotated_mat_image, new Point(left, top), new Point(right, bottom), new Scalar(0, 255, 0, 255), 2);
                     Imgproc.circle(rotated_mat_image, vehicleCentroid, 10, new Scalar(0, 0, 0), -1);
-                    Imgproc.putText(rotated_mat_image, labelList.get((int) class_value), new Point(left, top), 3, 1, new Scalar(255, 0, 0, 255), 2);
-
-                    Log.d("ObjectDetector", "Detected: " + labelList.get((int) class_value) +
-                            " (Class: " + class_value + ") | BoundingBox: [" + left + ", " + top + "] to [" + right + ", " + bottom + "] | Centroid: " + vehicleCentroid);
                 }
             }
         }
 
-        // Rotate the image back and return the result
+        // Update tracked vehicles with new centroids
+        updateTrackedVehicles(detectedCentroids);
+
+        // Draw each tracked vehicle's ID on the bounding box
+        for (Vehicle vehicle : trackedVehicles) {
+            Imgproc.putText(rotated_mat_image, "ID: " + vehicle.id,
+                    new Point(vehicle.centroid.x - 10, vehicle.centroid.y - 10),
+                    0, 0.5, new Scalar(255, 0, 0, 255), 2);
+        }
+
         Core.flip(rotated_mat_image.t(), mat_image, 0);
         return mat_image;
     }
@@ -159,4 +266,8 @@ public class ObjectDetector {
         }
         return byteBuffer;
     }
+
+
+
+
 }
