@@ -2,6 +2,7 @@ package com.example.javaapp;
 
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
+import android.graphics.RectF;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.net.Uri;
@@ -22,6 +23,21 @@ import org.opencv.android.Utils;
 import org.opencv.core.Mat;
 
 import java.io.IOException;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.View;
+import android.widget.Button;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
 
 public class MainActivity extends AppCompatActivity {
     static {
@@ -31,7 +47,11 @@ public class MainActivity extends AppCompatActivity {
             Log.d("MainActivity: ", "Opencv failed to load");
         }
     }
-
+    private ApiService apiService;
+    private SpeedEstimator speedEstimator;
+    private Handler handler;
+    private Runnable sendDataRunnable;
+    private static final int INTERVAL = 5000; // Interval in milliseconds (e.g., 5000 ms = 5 seconds)
 
     private Button camera_button;
     private Button video_button; // New variable for video button
@@ -84,9 +104,71 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl("http://141.215.203.136/projects/SpeedEye/") // Replace with your correct IP and path
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+
+
+        apiService = retrofit.create(ApiService.class);
+
+        // Initialize SpeedEstimator with a frame rate, e.g., 30 frames per second
+        speedEstimator = new SpeedEstimator(30.0);
+
+        handler = new Handler();
+        sendDataRunnable = new Runnable() {
+            @Override
+            public void run() {
+                sendVehicleSpeedData();
+
+                // Schedule the next execution
+                handler.postDelayed(this, INTERVAL);
+            }
+        };
+
+        // Start the periodic data sending
+        handler.post(sendDataRunnable);
+    }
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Remove any pending posts of sendDataRunnable when the activity is destroyed
+        handler.removeCallbacks(sendDataRunnable);
     }
 
+    private void sendVehicleSpeedData() {
+        int objectID = 1; // Example object ID
+        // Simulate detection of vehicles and their speed estimation
+        speedEstimator.addHistory(objectID, new RectF(100, 100, 150, 150));
+        speedEstimator.addHistory(objectID, new RectF(200, 200, 250, 250));
+        speedEstimator.addHistory(objectID, new RectF(300, 300, 350, 350));
 
+        double estimatedSpeed = speedEstimator.estimateSpeed(objectID);
+
+        Map<String, Object> vehicleData = new HashMap<>();
+        vehicleData.put("license_plate", "ABC123");
+        vehicleData.put("speed", estimatedSpeed);
+        vehicleData.put("latitude", 37.7749); // Optional: GPS latitude
+        vehicleData.put("longitude", -122.4194); // Optional: GPS longitude
+        vehicleData.put("image_path", "path/to/image.jpg"); // Optional: Image path
+
+        Call<Void> call = apiService.insertVehicleSpeed(vehicleData);
+        call.enqueue(new Callback<Void>() {
+            @Override
+            public void onResponse(Call<Void> call, Response<Void> response) {
+                if (response.isSuccessful()) {
+                    Log.d("MainActivity", "Vehicle speed inserted successfully");
+                } else {
+                    Log.e("MainActivity", "Error inserting vehicle speed: " + response.errorBody().toString());
+                }
+            }
+
+            @Override
+            public void onFailure(Call<Void> call, Throwable t) {
+                Log.e("MainActivity", "Error inserting vehicle speed: " + t.getMessage());
+            }
+        });
+    }
     private void playVideo() {
         camera_button.setVisibility(View.GONE);
         video_button.setVisibility(View.GONE);
@@ -121,7 +203,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private MediaMetadataRetriever retriever;
-    private Handler handler;
     private int frameRate = 30; // Frame rate in frames per second
     private int currentFrame = 0; // Current frame index
 

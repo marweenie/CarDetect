@@ -284,6 +284,11 @@ public class ObjectDetector {
         return mat_image;
     }
 
+    // calculate focal length
+    public double calculateFocalLength(double knownWidth, double knownDistance, double perceivedWidth) {
+        return (perceivedWidth * knownDistance) / knownWidth;
+    }
+
 
     // Converts bitmap to ByteBuffer format for model input
     private ByteBuffer convertBitmapToByteBuffer(Bitmap bitmap) {
