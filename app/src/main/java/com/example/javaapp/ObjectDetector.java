@@ -29,6 +29,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import org.opencv.core.MatOfPoint2f;
+
 
 public class ObjectDetector {
 
@@ -109,7 +111,6 @@ public class ObjectDetector {
             Pair<Long, RectF> pointC = history.get(history.size() - 2);
             Pair<Long, RectF> pointD = history.get(history.size() - 1);
 
-
             // Calculate meters per pixel (mpp) using the width of the bounding box at point A
             double mpp = AVERAGE_CAR_LENGTH_METERS / pointA.second.width();
 
@@ -118,30 +119,25 @@ public class ObjectDetector {
             double distanceBC = pointC.second.centerX() - pointB.second.centerX();
             double distanceCD = pointD.second.centerX() - pointC.second.centerX();
 
-
             // Convert distances to meters
             double distanceABMeters = Math.abs(distanceAB * mpp);
             double distanceBCMeters = Math.abs(distanceBC * mpp);
             double distanceCDMeters = Math.abs(distanceCD * mpp);
-
 
             // Calculate time intervals between points A to B and B to C in seconds
             double timeAB = (pointB.first - pointA.first) / 1000.0; // Convert milliseconds to seconds
             double timeBC = (pointC.first - pointB.first) / 1000.0; // Convert milliseconds to seconds
             double timeCD = (pointD.first - pointC.first) / 1000.0; // Convert milliseconds to seconds
 
-
             // Calculate speeds in m/s for regions AB and BC
             double speedAB = distanceABMeters / timeAB;
             double speedBC = distanceBCMeters / timeBC;
-            double speedCD = distanceBCMeters / timeCD;
-
+            double speedCD = distanceCDMeters / timeCD;
 
             // Convert speeds to km/h (1 m/s = 3.6 km/h)
             double speedABKMPH = speedAB * 3.6;
             double speedBCKMPH = speedBC * 3.6;
             double speedCDKMPH = speedCD * 3.6;
-
 
             // Calculate the final average speed
             return (speedABKMPH + speedBCKMPH + speedCDKMPH) / 3.0;
@@ -151,7 +147,7 @@ public class ObjectDetector {
     // List to keep track of active vehicles and their centroids
     private List<Vehicle> trackedVehicles = new ArrayList<>();
     private int nextVehicleId = 1; // ID counter for new vehicles
-    private static final double AVERAGE_CAR_LENGTH_METERS = 4.9; // Average car length in meters
+    private static final double AVERAGE_CAR_LENGTH_METERS = 4.5; // Average car length in meters
 
     // Method to update tracked vehicles with detected centroids and bounding boxes in the current frame
     private void updateTrackedVehicles(List<Point> detectedCentroids, List<RectF> boundingBoxes) {
@@ -203,16 +199,59 @@ public class ObjectDetector {
                 vehicle.framesNotSeen++;
                 // Remove vehicle if not seen for the maximum allowed frames
                 if (vehicle.framesNotSeen > MAX_FRAMES_NOT_SEEN) {
+
+                    MainActivity.frameRate = 15;
                     iterator.remove();
                 }
             }
         }
+        MainActivity.frameRate = 30;
     }
 
     // Utility method to calculate Euclidean distance between two points
     private double calculateDistance(Point p1, Point p2) {
         return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
     }
+
+    private Mat warpBoundingBox(Mat inputFrame, RectF boundingBox) {
+        // Source points from bounding box (top-left, top-right, bottom-left, bottom-right)
+        Point srcPoints[] = {
+                new Point(boundingBox.left, boundingBox.top),
+                new Point(boundingBox.right, boundingBox.top),
+                new Point(boundingBox.left, boundingBox.bottom),
+                new Point(boundingBox.right, boundingBox.bottom)
+        };
+
+        // Destination points - Rectified to standard size
+        double boxWidth = boundingBox.width();
+        double boxHeight = boundingBox.height();
+
+        Point dstPoints[] = {
+                new Point(0, 0),
+                new Point(boxWidth, 0),
+                new Point(0, boxHeight),
+                new Point(boxWidth, boxHeight)
+        };
+
+        // Calculate the perspective transformation matrix
+        Mat homographyMatrix = Imgproc.getPerspectiveTransform(
+                new MatOfPoint2f(srcPoints),
+                new MatOfPoint2f(dstPoints)
+        );
+
+        // Check if homography matrix is empty (failsafe)
+        if (homographyMatrix.empty()) {
+            Log.d("Warp", "Homography matrix empty – skipping warp.");
+            return inputFrame.submat((int) boundingBox.top, (int) boundingBox.bottom, (int) boundingBox.left, (int) boundingBox.right);
+        }
+
+        // Apply the warp
+        Mat outputFrame = new Mat();
+        Imgproc.warpPerspective(inputFrame, outputFrame, homographyMatrix, inputFrame.size());
+
+        return outputFrame;
+    }
+
 
     public Mat recognizeImage(Mat mat_image) {
         Mat rotated_mat_image = new Mat();
@@ -260,8 +299,19 @@ public class ObjectDetector {
                     detectedCentroids.add(vehicleCentroid);
                     boundingBoxes.add(boundingBox);
 
+                    // **Apply Perspective Warp to the Bounding Box (INSERT HERE)**
+                    Mat warpedBox = warpBoundingBox(rotated_mat_image, boundingBox);
+                    Mat roi = rotated_mat_image.submat((int) boundingBox.top, (int) boundingBox.bottom, (int) boundingBox.left, (int) boundingBox.right);
+
+                    // Resize warped box to match bounding box dimensions
+                    Imgproc.resize(warpedBox, warpedBox, roi.size());
+
+                    // Copy warped box back to ROI in the original image
+                    warpedBox.copyTo(roi);
+
                     Imgproc.rectangle(rotated_mat_image, new Point(left, top), new Point(right, bottom), new Scalar(0, 255, 0, 255), 2);
                     Imgproc.circle(rotated_mat_image, vehicleCentroid, 10, new Scalar(0, 0, 0), -1);
+
                 }
             }
         }

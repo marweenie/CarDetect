@@ -60,6 +60,7 @@ public class MainActivity extends AppCompatActivity {
     private ImageView imageView;
 
     private ObjectDetector objectDetector;
+    public static int frameRate = 30; // Frame rate in frames per second
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -113,7 +114,8 @@ public class MainActivity extends AppCompatActivity {
         apiService = retrofit.create(ApiService.class);
 
         // Initialize SpeedEstimator with a frame rate, e.g., 30 frames per second
-        speedEstimator = new SpeedEstimator(30.0);
+        //change the 30 to be an int variable equal to 30.
+        speedEstimator = new SpeedEstimator(frameRate);
 
         handler = new Handler();
         sendDataRunnable = new Runnable() {
@@ -203,7 +205,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private MediaMetadataRetriever retriever;
-    private int frameRate = 30; // Frame rate in frames per second
     private int currentFrame = 0; // Current frame index
 
     private void playIMGVideo() {
@@ -245,6 +246,8 @@ public class MainActivity extends AppCompatActivity {
 
                     // Apply object detection using the instance of ObjectDetector
                     Mat detectedMat = objectDetector.recognizeImage(matFrame);
+
+                    speedEstimator = new SpeedEstimator(frameRate);
 
                     // Convert the processed Mat back to a Bitmap
                     Bitmap detectedBitmap = Bitmap.createBitmap(detectedMat.cols(), detectedMat.rows(), Bitmap.Config.ARGB_8888);
